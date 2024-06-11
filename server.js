@@ -14,10 +14,9 @@ const isLoggedIn = require('./middleware/auth');
 const app = express();
 
 app.use(cors({
-    origin: '*', 
+    origin: 'https://coruscating-pie-de530c.netlify.app', 
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Specify allowed methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
-    credentials: true, // Include credentials in the CORS requests
+    allowedHeaders: "Content-Type,Accept,User-Agent,Accept-Language,Access-Control-Allow-Origin,Access-Control-Allow-Credentials,cache-control",
     preflightContinue: false,
     optionsSuccessStatus: 204, // Some legacy browsers (IE11, various SmartTVs) choke on 204,
   }));
