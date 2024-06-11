@@ -41,7 +41,7 @@ async function consumeMessages() {
         console.log(customer, 'updated');
         channel.ack(msg);
     });
-
+    channel.prefetch(100); 
     channel.consume("communication", async (msg) => {
         const {
             customerId, message, campaignId
