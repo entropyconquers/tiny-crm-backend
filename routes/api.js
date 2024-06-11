@@ -127,32 +127,46 @@ router.post('/campaign', isLoggedIn, async (req, res) => {
 //get campaigns 
 //delivery stats like audience size, sent size, failed size in the campaign listing page
 router.get('/campaign', async (req, res) => {
-    const campaigns = await Campaign.find({}).sort({ createdAt: -1 });    
-    const campaignData = await Promise.all(campaigns.map(async campaign => {
-        const campaignGroup = await CampaignGroup.findById(campaign.campaignGroupId);
-        // Check if campaignGroup exists
-        if (!campaignGroup) {
-            console.log(`CampaignGroup not found for campaignGroupId: ${campaign.campaignGroupId}`);
+    try {
+        const campaigns = await Campaign.find({}).sort({ createdAt: -1 });
+        const campaignGroupIds = [...new Set(campaigns.map(campaign => campaign.campaignGroupId))];
+        
+        const campaignGroups = await CampaignGroup.find({
+            '_id': { $in: campaignGroupIds }
+        }).lean(); 
+        
+        const campaignGroupMap = campaignGroups.reduce((acc, group) => {
+            acc[group._id] = group;
+            return acc;
+        }, {});
+        
+        const communicationLogs = await CommunicationLog.aggregate([
+            { $match: { campaignId: { $in: campaigns.map(campaign => campaign._id) }, status: { $in: ['FAILED', 'SENT'] } } },
+            { $group: { _id: { campaignId: "$campaignId", status: "$status" }, count: { $sum: 1 } } }
+        ]);
+        
+        const communicationLogMap = communicationLogs.reduce((acc, log) => {
+            if (!acc[log._id.campaignId]) acc[log._id.campaignId] = { failedSize: 0, sentSize: 0 };
+            if (log._id.status === 'FAILED') acc[log._id.campaignId].failedSize = log.count;
+            if (log._id.status === 'SENT') acc[log._id.campaignId].sentSize = log.count;
+            return acc;
+        }, {});
+        
+        const campaignData = campaigns.map(campaign => {
+            const campaignGroup = campaignGroupMap[campaign.campaignGroupId];
+            const logs = communicationLogMap[campaign._id.toString()] || { failedSize: 0, sentSize: 0 };
             return {
                 ...campaign.toObject(),
-                audienceSize: 0,
-                sentSize: 0,
-                failedSize: 0,
-
+                audienceSize: campaignGroup ? campaignGroup.customerIds.length : 0,
+                ...logs
             };
-        }
+        });
         
-        const audienceSize = campaignGroup.customerIds.length;
-        const failedSize = await CommunicationLog.countDocuments({ campaignId: campaign._id, status: 'FAILED' });
-        const sentSize = await CommunicationLog.countDocuments({ campaignId: campaign._id, status: 'SENT' });
-        return {
-            ...campaign.toObject(),
-            audienceSize,
-            sentSize,
-            failedSize
-        };
-    }));
-    res.status(200).json(campaignData);
+        res.status(200).json(campaignData);
+    } catch (error) {
+        console.error('Error fetching campaigns:', error);
+        res.status(500).send('Internal Server Error');
+    }
 });
 
 //delete all campaign groups
