@@ -190,4 +190,9 @@ router.get("/authenticate", isLoggedIn, (req, res) => {
     res.status(200).json({ message: "Authenticated" });
 });
 
+// Hello world test route
+router.get("/ping", (req, res) => {
+    res.status(200).json({ message: "pong" });
+});
+
 module.exports = router;
