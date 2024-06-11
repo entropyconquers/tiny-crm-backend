@@ -105,23 +105,36 @@ router.post('/audience', isLoggedIn, async (req, res) => {
 
 
 
-// Create campaign
 router.post('/campaign', isLoggedIn, async (req, res) => {
-    const { name, campaignGroupId, message } = req.body;
-    const campaignGroup = await CampaignGroup.findById(campaignGroupId);
-    if (!campaignGroup) {
-        return res.status(404).json({ error: 'CampaignGroup not found' });
+    try {
+        const { name, campaignGroupId, message } = req.body;
+        const campaignGroup = await CampaignGroup.findById(campaignGroupId);
+        if (!campaignGroup) {
+            return res.status(404).json({ error: 'CampaignGroup not found' });
+        }
+
+        const campaign = new Campaign({ name, campaignGroupId, message });
+        await campaign.save();
+
+        // Prepare logs for bulk insertion
+        const logs = campaignGroup.customerIds.map(customerId => ({
+            customerId, message, campaignId: campaign._id
+        }));
+
+        // Bulk insert logs
+        await CommunicationLog.insertMany(logs);
+
+        // Send logs to queue in parallel
+        const sendToQueuePromises = logs.map(log =>
+            channel.sendToQueue("communication", Buffer.from(JSON.stringify(log)))
+        );
+        await Promise.all(sendToQueuePromises);
+
+        res.status(200).json(campaign);
+    } catch (error) {
+        console.error('Error creating campaign:', error);
+        res.status(500).send('Internal Server Error');
     }
-
-    const campaign = new Campaign({ name, campaignGroupId, message });
-    await campaign.save();
-
-    campaignGroup.customerIds.forEach(async customerId => {
-        const log = new CommunicationLog({ customerId, message, campaignId: campaign._id });
-        await log.save();
-        await channel.sendToQueue("communication", Buffer.from(JSON.stringify(log)));
-    });
-    res.status(200).json(campaign);
 });
 
 //get campaigns 
