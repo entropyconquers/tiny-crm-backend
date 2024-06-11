@@ -14,7 +14,7 @@ const isLoggedIn = require('./middleware/auth');
 const app = express();
 
 app.use(cors({
-    origin: 'https://tiny-crm-frontend.onrender.com', 
+    origin: '*', 
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Specify allowed methods
     allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
     credentials: true, // Include credentials in the CORS requests
