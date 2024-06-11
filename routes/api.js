@@ -185,12 +185,9 @@ router.get('/communication-log/:campaignId', async (req, res) => {
 });
 
 
-router.get("/user", isLoggedIn, (req, res) => {
-    if (req.user && req.user.email) {
-        res.status(200).json({ user: req.user });
-    } else {
-        res.status(401).json({ message: "You are not logged in" });
-    }
+router.get("/authenticate", isLoggedIn, (req, res) => {
+    // If the user is authenticated, return the json object with message "Authenticated"
+    res.status(200).json({ message: "Authenticated" });
 });
 
 module.exports = router;
