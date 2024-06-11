@@ -117,13 +117,9 @@ router.post('/campaign', isLoggedIn, async (req, res) => {
     await campaign.save();
     const communicationLogs = []
     campaignGroup.customerIds.forEach(async customerId => {
-        // const log = new CommunicationLog({ customerId, message, campaignId: campaign._id });
-        // await log.save();
         const log = { customerId, message, campaignId: campaign._id };
-        communicationLogs.push({ customerId, message, campaignId: campaign._id });
         await channel.sendToQueue("communication", Buffer.from(JSON.stringify(log)));
     });
-    await CommunicationLog.insertMany(communicationLogs);
     res.status(200).json(campaign);
 });
 

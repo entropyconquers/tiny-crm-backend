@@ -43,7 +43,11 @@ async function consumeMessages() {
     });
 
     channel.consume("communication", async (msg) => {
-        const log = JSON.parse(msg.content.toString());
+        const {
+            customerId, message, campaignId
+        } = JSON.parse(msg.content.toString());
+        const log = new CommunicationLog({ customerId, message, campaignId: campaignId });
+        await log.save();
         const deliveryStatus = Math.random() < 0.9 ? 'SENT' : 'FAILED';
 
         await channel.sendToQueue("delivery-receipt", Buffer.from(JSON.stringify({
